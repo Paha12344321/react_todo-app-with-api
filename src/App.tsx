@@ -32,57 +32,59 @@ export const App: React.FC = () => {
   };
 
   const handleDelete = (todoId: number) => {
-    setLoadingTodoIds((prev) => [...prev, todoId]);
+    setLoadingTodoIds(prev => [...prev, todoId]);
 
     return deleteTodo(todoId)
       .then(() => {
-        setTodos((prev) => prev.filter((t) => t.id !== todoId));
+        setTodos(prev => prev.filter(t => t.id !== todoId));
       })
-      .catch((error) => {
+      .catch(error => {
         showError('Unable to delete a todo');
         throw error;
       })
       .finally(() => {
-        setLoadingTodoIds((prev) => prev.filter((id) => id !== todoId));
+        setLoadingTodoIds(prev => prev.filter(id => id !== todoId));
         todoFieldRef.current?.focus();
       });
   };
 
-const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
-  const updatedFields = { ...fields };
+  const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
+    const updatedFields = { ...fields };
 
-  if (updatedFields.title !== undefined) {
-    const trimmedTitle = updatedFields.title.trim();
+    if (updatedFields.title !== undefined) {
+      const trimmedTitle = updatedFields.title.trim();
 
-    if (trimmedTitle === todo.title) {
-      setEditingTodo(null);
-      return;
+      if (trimmedTitle === todo.title) {
+        setEditingTodo(null);
+
+        return;
+      }
+
+      if (!trimmedTitle) {
+        handleDelete(todo.id)
+          .then(() => setEditingTodo(null))
+          .catch(() => {});
+
+        return;
+      }
+
+      updatedFields.title = trimmedTitle;
     }
 
-    if (!trimmedTitle) {
-      handleDelete(todo.id)
-        .then(() => setEditingTodo(null))
-        .catch(() => {});
-      return;
-    }
+    setLoadingTodoIds(prev => [...prev, todo.id]);
 
-    updatedFields.title = trimmedTitle;
-  }
-
-  setLoadingTodoIds((prev) => [...prev, todo.id]);
-
-  updateTodo(todo.id, updatedFields)
-    .then((updatedTodo) => {
-      setTodos((prev) => prev.map((t) => (t.id === todo.id ? updatedTodo : t)));
-      setEditingTodo(null);
-    })
-    .catch(() => {
-      showError('Unable to update a todo');
-    })
-    .finally(() => {
-      setLoadingTodoIds((prev) => prev.filter((id) => id !== todo.id));
-    });
-};
+    updateTodo(todo.id, updatedFields)
+      .then(updatedTodo => {
+        setTodos(prev => prev.map(t => (t.id === todo.id ? updatedTodo : t)));
+        setEditingTodo(null);
+      })
+      .catch(() => {
+        showError('Unable to update a todo');
+      })
+      .finally(() => {
+        setLoadingTodoIds(prev => prev.filter(id => id !== todo.id));
+      });
+  };
 
   // Ефекти
   useEffect(() => {
@@ -115,11 +117,16 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
     }
 
     setIsAdding(true);
-    setTempTodo({ id: 0, userId: USER_ID, title: trimmedTitle, completed: false });
+    setTempTodo({
+      id: 0,
+      userId: USER_ID,
+      title: trimmedTitle,
+      completed: false,
+    });
 
     createTodo(trimmedTitle)
-      .then((newTodo) => {
-        setTodos((prev) => [...prev, newTodo]);
+      .then(newTodo => {
+        setTodos(prev => [...prev, newTodo]);
         setNewTodoTitle('');
       })
       .catch(() => showError('Unable to add a todo'))
@@ -130,24 +137,31 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
   };
 
   const toggleAll = () => {
-    const allCompleted = todos.every((t) => t.completed);
+    const allCompleted = todos.every(t => t.completed);
 
     todos
-      .filter((t) => t.completed === allCompleted)
-      .forEach((t) => handleUpdate(t, { completed: !allCompleted }));
+      .filter(t => t.completed === allCompleted)
+      .forEach(t => handleUpdate(t, { completed: !allCompleted }));
   };
 
-  if (!USER_ID) return <UserWarning />;
+  if (!USER_ID) {
+    return <UserWarning />;
+  }
 
-  const visibleTodos = todos.filter((todo) => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
+  const visibleTodos = todos.filter(todo => {
+    if (filter === 'active') {
+      return !todo.completed;
+    }
+
+    if (filter === 'completed') {
+      return todo.completed;
+    }
 
     return true;
   });
 
-  const activeTodosCount = todos.filter((t) => !t.completed).length;
-  const isAllCompleted = todos.length > 0 && todos.every((t) => t.completed);
+  const activeTodosCount = todos.filter(t => !t.completed).length;
+  const isAllCompleted = todos.length > 0 && todos.every(t => t.completed);
 
   return (
     <div className="todoapp">
@@ -172,7 +186,7 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
               className="todoapp__new-todo"
               placeholder="What needs to be done?"
               value={newTodoTitle}
-              onChange={(e) => setNewTodoTitle(e.target.value)}
+              onChange={e => setNewTodoTitle(e.target.value)}
               disabled={isAdding}
             />
           </form>
@@ -180,7 +194,7 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
 
         {(todos.length > 0 || tempTodo) && (
           <section className="todoapp__main" data-cy="TodoList">
-            {visibleTodos.map((todo) => (
+            {visibleTodos.map(todo => (
               <div
                 data-cy="Todo"
                 className={`todo ${todo.completed ? 'completed' : ''}`}
@@ -192,14 +206,16 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
                     type="checkbox"
                     className="todo__status"
                     checked={todo.completed}
-                    onChange={() => handleUpdate(todo, { completed: !todo.completed })}
+                    onChange={() =>
+                      handleUpdate(todo, { completed: !todo.completed })
+                    }
                   />
                   <span className="is-hidden">Status</span>
                 </label>
 
                 {editingTodo?.id === todo.id ? (
                   <form
-                    onSubmit={(e) => {
+                    onSubmit={e => {
                       e.preventDefault();
                       handleUpdate(todo, { title: editTitle });
                     }}
@@ -210,9 +226,9 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
                       ref={editFieldRef}
                       className="todo__title-field"
                       value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
+                      onChange={e => setEditTitle(e.target.value)}
                       onBlur={() => handleUpdate(todo, { title: editTitle })}
-                      onKeyUp={(e) => e.key === 'Escape' && setEditingTodo(null)}
+                      onKeyUp={e => e.key === 'Escape' && setEditingTodo(null)}
                     />
                   </form>
                 ) : (
@@ -251,11 +267,19 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
             {tempTodo && (
               <div data-cy="Todo" className="todo">
                 <label className="todo__status-label">
-                  <input data-cy="TodoStatus" type="checkbox" className="todo__status" />
+                  <input
+                    data-cy="TodoStatus"
+                    type="checkbox"
+                    className="todo__status"
+                  />
                   <span className="is-hidden">Status</span>
                 </label>
-                <span data-cy="TodoTitle" className="todo__title">{tempTodo.title}</span>
-                <button type="button" className="todo__remove">×</button>
+                <span data-cy="TodoTitle" className="todo__title">
+                  {tempTodo.title}
+                </span>
+                <button type="button" className="todo__remove">
+                  ×
+                </button>
                 <div data-cy="TodoLoader" className="modal overlay is-active">
                   <div className="modal-background has-background-white-ter" />
                   <div className="loader" />
@@ -272,17 +296,42 @@ const handleUpdate = (todo: Todo, fields: Partial<Todo>) => {
             </span>
 
             <nav className="filter" data-cy="Filter">
-              <a href="#/" data-cy="FilterLinkAll" className={`filter__link ${filter === 'all' ? 'selected' : ''}`} onClick={() => setFilter('all')}>All</a>
-              <a href="#/active" data-cy="FilterLinkActive" className={`filter__link ${filter === 'active' ? 'selected' : ''}`} onClick={() => setFilter('active')}>Active</a>
-              <a href="#/completed" data-cy="FilterLinkCompleted" className={`filter__link ${filter === 'completed' ? 'selected' : ''}`} onClick={() => setFilter('completed')}>Completed</a>
+              <a
+                href="#/"
+                data-cy="FilterLinkAll"
+                className={`filter__link ${filter === 'all' ? 'selected' : ''}`}
+                onClick={() => setFilter('all')}
+              >
+                All
+              </a>
+              <a
+                href="#/active"
+                data-cy="FilterLinkActive"
+                className={`filter__link ${filter === 'active' ? 'selected' : ''}`}
+                onClick={() => setFilter('active')}
+              >
+                Active
+              </a>
+              <a
+                href="#/completed"
+                data-cy="FilterLinkCompleted"
+                className={`filter__link ${filter === 'completed' ? 'selected' : ''}`}
+                onClick={() => setFilter('completed')}
+              >
+                Completed
+              </a>
             </nav>
 
             <button
               type="button"
               className="todoapp__clear-completed"
               data-cy="ClearCompletedButton"
-              disabled={!todos.some((t) => t.completed)}
-              onClick={() => todos.filter((t) => t.completed).forEach((t) => handleDelete(t.id).catch(() => {}))}
+              disabled={!todos.some(t => t.completed)}
+              onClick={() =>
+                todos
+                  .filter(t => t.completed)
+                  .forEach(t => handleDelete(t.id).catch(() => {}))
+              }
             >
               Clear completed
             </button>
