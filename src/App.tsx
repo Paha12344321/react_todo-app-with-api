@@ -57,15 +57,13 @@ export const App: React.FC = () => {
       if (trimmedTitle === todo.title) {
         setEditingTodo(null);
 
-        return;
+        return Promise.resolve();
       }
 
       if (!trimmedTitle) {
-        handleDelete(todo.id)
+        return handleDelete(todo.id)
           .then(() => setEditingTodo(null))
           .catch(() => {});
-
-        return;
       }
 
       updatedFields.title = trimmedTitle;
@@ -73,20 +71,20 @@ export const App: React.FC = () => {
 
     setLoadingTodoIds(prev => [...prev, todo.id]);
 
-    updateTodo(todo.id, updatedFields)
+    return updateTodo(todo.id, updatedFields)
       .then(updatedTodo => {
         setTodos(prev => prev.map(t => (t.id === todo.id ? updatedTodo : t)));
         setEditingTodo(null);
       })
-      .catch(() => {
+      .catch(error => {
         showError('Unable to update a todo');
+        throw error;
       })
       .finally(() => {
         setLoadingTodoIds(prev => prev.filter(id => id !== todo.id));
       });
   };
 
-  // Ефекти
   useEffect(() => {
     getTodos()
       .then(setTodos)
@@ -105,7 +103,6 @@ export const App: React.FC = () => {
     }
   }, [editingTodo]);
 
-  // Обробники
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedTitle = newTodoTitle.trim();
@@ -138,10 +135,13 @@ export const App: React.FC = () => {
 
   const toggleAll = () => {
     const allCompleted = todos.every(t => t.completed);
+    const todosToUpdate = todos.filter(t => t.completed === allCompleted);
 
-    todos
-      .filter(t => t.completed === allCompleted)
-      .forEach(t => handleUpdate(t, { completed: !allCompleted }));
+    const updatePromises = todosToUpdate.map(t =>
+      handleUpdate(t, { completed: !allCompleted }),
+    );
+
+    Promise.all(updatePromises).catch(() => {});
   };
 
   if (!USER_ID) {
@@ -327,11 +327,14 @@ export const App: React.FC = () => {
               className="todoapp__clear-completed"
               data-cy="ClearCompletedButton"
               disabled={!todos.some(t => t.completed)}
-              onClick={() =>
-                todos
-                  .filter(t => t.completed)
-                  .forEach(t => handleDelete(t.id).catch(() => {}))
-              }
+              onClick={() => {
+                const completedTodos = todos.filter(t => t.completed);
+                const deletePromises = completedTodos.map(t =>
+                  handleDelete(t.id),
+                );
+
+                void Promise.all(deletePromises).catch(() => {});
+              }}
             >
               Clear completed
             </button>
